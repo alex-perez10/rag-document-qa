@@ -1,0 +1,47 @@
+* {
+  margin: 0;
+  padding: 0;
+ /* box-sizing: border-box;*/
+}
+body {
+  background-color: #0f0f1a;
+  color: #ffffff;
+  font-family: 'Inter', Segoe UI;
+  height: 100vh;
+}
+.app{
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+.header-bar{
+  display:flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 32px;
+  background-color:#13131f;
+  border-bottom: 5px solid #2a2a3d;
+}
+.logo{
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: 2px;
+}
+.logo span {
+  background: linear-gradient(to right, #7c5cbf, #a78bfa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: #7c5cbf;
+}
+.container{
+  display: flex;
+  flex:1;
+  overflow: hidden;
+}
+.left-panel{
+  width: 20%;
+  padding: 50px;
+  background-color: #13131f;
+  border-right: 5px solid #2a2a3d;
+  gap: 10px;
+}

@@ -17,7 +17,7 @@ function App() {
   return (
     <div className="app">
       {/* Header */}
-      <header className="header">
+      <header className="header-bar">
         <h1 className="logo">DocScanner<span>AI</span></h1>
       </header>
 
