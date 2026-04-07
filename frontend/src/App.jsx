@@ -61,9 +61,9 @@ function App() {
           </div>
 
           <div className="chat-input-area">
-            <input
+            <textarea
               type="text"
-              placeholder="Ask a question about your document..."
+              placeholder="Ask a question about your document"
               className="chat-input"
             />
             <button className="send-button">Send</button>
@@ -74,5 +74,6 @@ function App() {
     </div>
   )
 }
+
 
 export default App
