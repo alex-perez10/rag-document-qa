@@ -1,8 +1,7 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
-from fastapi import FastAPI, UploadFile, File, HTTPException
 import PyPDF2
 import docx
 import io
@@ -51,6 +50,8 @@ def read_root():
     return {"message": "Backend is running and cool"}
 
 def extract_text(file_bytes: bytes, filename: str) -> str:
+    """Pulls text out of uploaded file based on file type (PDF, TXT, DOCX)."""
+    
     # Reads file based on its type
     if filename.endswith(".pdf"):
         # Turn raw bytes into something the PDF reader can handle
@@ -68,13 +69,33 @@ def extract_text(file_bytes: bytes, filename: str) -> str:
         doc = docx.Document(io.BytesIO(file_bytes))
         extracted_text = ""
         for paragraph in doc.paragraphs:
-             # Combines all paragraphs into one string
+            # Combines all paragraphs into one string
             extracted_text += paragraph.text + "\n"
         return extracted_text
     else:
-         # Reject unsupported file types
+        # Reject unsupported file types
         raise HTTPException(status_code=400, detail="File type is not supported")
     
+def chunk_text(text: str, chunk_size: int = 500, overlap: int = 50) -> list:
+    """Splits extracted text into chunks that overlap slightly so context isn't lost when chunked together"""
+
+    # Breaks text into words first
+    words = text.split()
+    chunks = []
+    start = 0
+
+    while start < len(words):
+
+        # Builds a chunk from a slice of words
+        end = start + chunk_size
+        chunk = " ".join(words[start:end])
+        chunks.append(chunk)
+
+        # Moves start forward but keep some overlap so context isn't lost
+        start = end - overlap
+
+    return chunks
+
 def get_embeddings(chunks: list) -> list:
     """Send each chunk to OpenAI and get back a list of embeddings (numbers representing meaning)."""
     embeddings = []
@@ -137,29 +158,48 @@ def search_both_indexes(query_embedding: list, k: int = 5) -> dict:
     log_comparison(bf_time, hnsw_time, bf_indices[0].tolist(), hnsw_indices[0].tolist(), doc_size)
 
     return [stored_chunks[i] for i in bf_indices[0] if i < len(stored_chunks)]
-    
-def chunk_text(text: str, chunk_size: int = 500, overlap: int = 50) -> list:
-     # Breaks text into words first
-    words = text.split()
-    chunks = []
-    start = 0
 
-    while start < len(words):
-        # Builds a chunk from a slice of words
-        end = start + chunk_size
-        chunk = " ".join(words[start:end])
-        chunks.append(chunk)
-         # Moves start forward but keep some overlap so context isn't lost
-        start = end - overlap
+@app.post("/chat")
+async def chat(request: dict):
+    """Takes user question, retrieve relevant chunks via RAG, return AI answer grounded in the document."""
 
-    return chunks
+    # Pulls the questions and conversation histroy out of request from frontend
+    question = request.get("question")
+    history = request.get("history", [])
+
+    # Converts the user's questions into an embedding to compare to stored chunk embeddings
+    question_embedding_response = client.embeddings.create(
+        input=question,
+        model="text-embedding-3-small"
+    )
+    # Gets just the list of numbers from the embeddings, runs both search algortihtms, logs results, and combines relevant chunks
+    question_embedding = question_embedding_response.data[0].embedding
+    relevant_chunks = search_both_indexes(question_embedding)
+    context = "\n\n".join(relevant_chunks)
+
+    # Prompts the system after every question with new relevant chunks
+    system_prompt = f"""You are a document assistant. Answer questions only based on the document provided below.
+If the answer is not in the document, say 'I could not find that in the uploaded document.'
+Do not use any outside knowledge.
+
+Document content:
+{context}"""
     
-@app.post("/upload")
-async def upload_file(file: UploadFile = File(...)):
-    # Read uploaded file into memory and extract text from it 
-    file_bytes = await file.read()
-    extracted_text = extract_text(file_bytes, file.filename)
-    return {"message": "File uploaded successfully", "characters": len(text)}
+    # Builds the chat layout. First - prompt from the system, Second - coversation history
+    # Third - Adds the current question
+    messages = [{"role": "system", "content": system_prompt}]
+    messages += history
+    messages.append({"role": "user", "content": question})
+
+    # Sends to GPT-4o and gets a response
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=messages
+    )
+
+    # Returns just the answer text
+    return {"answer": response.choices[0].message.content}
+
 
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):

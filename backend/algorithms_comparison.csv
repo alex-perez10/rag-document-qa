@@ -1,0 +1,2 @@
+timestamp,doc_size,bf_time_ms,hnsw_time_ms,bf_indices,hnsw_indices
+2026-04-14T21:24:16.682577,small,4.9098,3.4943,"[0, 1, -1, -1, -1]","[0, 1, -1, -1, -1]"
