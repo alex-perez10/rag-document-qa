@@ -1,5 +1,5 @@
-import { useState } from 'react'
 import './App.css'
+import { useState, useEffect, useRef } from 'react'
 
 function App() {
 const [uploadedFile, setUploadedFile] = useState(null)
@@ -8,6 +8,14 @@ const [messages, setMessages] = useState([])
 const [history, setHistory] = useState([])
 const [question, setQuestion] = useState('')
 const [isLoading, setIsLoading] = useState(false)
+const bottomRef = useRef(null)
+
+useEffect(() => {
+  // Slight delay so new message renders before scrolling starts
+  setTimeout(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, 100)
+}, [messages])
 
 // Runs when file is selected and starts at the first file if multiple are uploaded
   const handleFileUpload = (e) => {
@@ -123,6 +131,7 @@ const handleSendMessage = async () => {
         <p>Thinking...</p>
       </div>
     )}
+    <div ref={bottomRef} />
   </div>
 
   <div className="chat-input-area">
