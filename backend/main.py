@@ -178,9 +178,9 @@ async def chat(request: dict):
     context = "\n\n".join(relevant_chunks)
 
     # Prompts the system after every question with new relevant chunks
-    system_prompt = f"""You are a document assistant. Answer questions only based on the document provided below.
-If the answer is not in the document, say 'I could not find that in the uploaded document.'
-Do not use any outside knowledge.
+    system_prompt = f"""You are a helpful assistant that answers questions about an uploaded document.
+Use the document content below as your primary source, but you can be conversational and natural in your responses.
+If something isn't in the document, just let the user know naturally rather than giving a rigid refusal.
 
 Document content:
 {context}"""
