@@ -11,6 +11,7 @@ import numpy as np
 import time
 import csv
 from datetime import datetime
+import tracemalloc
 
 """
 Backend for uploading documents and extracting text.
@@ -116,7 +117,7 @@ def get_document_size_category(num_chunks: int) -> str:
     else:
         return "very_large"
     
-def log_comparison(bf_time: float, hnsw_time: float, bf_indices: list, hnsw_indices: list, doc_size: str):
+def log_comparison(bf_time: float, hnsw_time: float, bf_memory: float, hnsw_memory: float, bf_indices: list, hnsw_indices: list, doc_size: str):
     """Logs brute force vs HNSW comparison results to a CSV file for analysis."""
     log_file = "algorithms_comparison.csv"
     file_exists = os.path.isfile(log_file)
@@ -124,12 +125,14 @@ def log_comparison(bf_time: float, hnsw_time: float, bf_indices: list, hnsw_indi
     with open(log_file, "a", newline="") as f:
         writer = csv.writer(f)
         if not file_exists:
-            writer.writerow(["timestamp", "doc_size", "bf_time_ms", "hnsw_time_ms", "bf_indices", "hnsw_indices"])
+            writer.writerow(["timestamp", "doc_size", "bf_time_ms", "hnsw_time_ms", "bf_memory_mb", "hnsw_memory_mb","bf_indices", "hnsw_indices"])
         writer.writerow([
             datetime.now().isoformat(),
             doc_size,
             round(bf_time, 4),
             round(hnsw_time, 4),
+            round(bf_memory, 6),
+            round(hnsw_memory, 6),
             bf_indices,
             hnsw_indices
         ])
@@ -140,19 +143,25 @@ def search_both_indexes(query_embedding: list, k: int = 5) -> dict:
     query_vector = np.array([query_embedding]).astype("float32")
     faiss.normalize_L2(query_vector)
 
-    # Brute force search
+    # Brute force search measures time and memory
+    tracemalloc.start()
     start = time.time()
     _, bf_indices = brute_force_index.search(query_vector, k)
     bf_time = (time.time() - start) * 1000
+    bf_memory = tracemalloc.get_traced_memory()[1] / (1024 * 1024)
+    tracemalloc.stop()
 
-    # HNSW search
+    tracemalloc.start()
+    # HNSW search measures time and memory
     start = time.time()
     _, hnsw_indices = hnsw_index.search(query_vector, k)
     hnsw_time = (time.time() - start) * 1000
+    hnsw_memory = tracemalloc.get_traced_memory()[1] / (1024 * 1024)
+    tracemalloc.stop()
 
     doc_size = get_document_size_category(len(stored_chunks))
 
-    log_comparison(bf_time, hnsw_time, bf_indices[0].tolist(), hnsw_indices[0].tolist(), doc_size)
+    log_comparison(bf_time, hnsw_time, bf_memory, hnsw_memory, bf_indices[0].tolist(), hnsw_indices[0].tolist(), doc_size)
 
     return [stored_chunks[i] for i in bf_indices[0] if i < len(stored_chunks)]
 
