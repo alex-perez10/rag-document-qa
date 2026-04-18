@@ -1,5 +1,6 @@
 import './App.css'
 import { useState, useEffect, useRef } from 'react'
+import ReactMarkdown from 'react-markdown'
 
 function App() {
 const [uploadedFile, setUploadedFile] = useState(null)
@@ -23,6 +24,7 @@ useEffect(() => {
   if (file) {
     setUploadedFile(file)
     setFileName(file.name)
+    setHistory([])
     handleSendFile(file)
   }
 }
@@ -122,7 +124,7 @@ const handleSendMessage = async () => {
     ) : (
       messages.map((msg, index) => (
         <div key={index} className={`message ${msg.role}`}>
-          <p>{msg.content}</p>
+          <ReactMarkdown>{msg.content}</ReactMarkdown>
         </div>
       ))
     )}

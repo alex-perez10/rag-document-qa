@@ -2,7 +2,7 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
-import PyPDF2
+import pdfplumber
 import docx
 import io
 from openai import OpenAI
@@ -51,16 +51,13 @@ def read_root():
 
 def extract_text(file_bytes: bytes, filename: str) -> str:
     """Pulls text out of uploaded file based on file type (PDF, TXT, DOCX)."""
-    
-    # Reads file based on its type
     if filename.endswith(".pdf"):
-        # Turn raw bytes into something the PDF reader can handle
-        pdf_reader = PyPDF2.PdfReader(io.BytesIO(file_bytes))
-        extracted_text = ""
-        # Go page by page and collect all text
-        for page in pdf_reader.pages: 
-            extracted_text += page.extract_text()
-        return extracted_text
+        # Opens PDF and pulls text page by page
+        with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
+            text = ""
+            for page in pdf.pages:
+                text += page.extract_text() or ""
+        return text
     elif filename.endswith(".txt"):
         # Converts raw bytes into a normal string
         return file_bytes.decode("utf-8")
@@ -204,7 +201,12 @@ Document content:
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
     """Accepts a document, extracts text, chunks it, embeds it, and stores in both FAISS indexes."""
-    global stored_chunks
+    global stored_chunks,brute_force_index, hnsw_index
+
+    # Reset both indexes and chunks so new document starts fresh
+    brute_force_index = faiss.IndexFlatIP(dimension)
+    hnsw_index = faiss.IndexHNSWFlat(dimension, 32)
+    stored_chunks = []
     
     # Reads file and final output are embeddings
     file_bytes = await file.read()

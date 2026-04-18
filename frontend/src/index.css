@@ -145,6 +145,23 @@ body {
   background-color: #1e1e2f;
   align-self: flex-start;
   color: #e2e2e2;
+  
+}
+.message p {
+  margin: 0 0 8px 0;
+}
+
+.message ul, .message ol {
+  padding-left: 20px;
+  margin: 8px 0;
+}
+
+.message li {
+  margin-bottom: 4px;
+}
+
+.message strong {
+  font-weight: 600;
 }
 /* CHAT INPUT */
 .chat-input-area {
